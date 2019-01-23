@@ -129,7 +129,7 @@ void setup() {
     Serial.print(hostname);
     Serial.print(".local");
     Serial.println();
-    MDNS.addService("http", "tcp", 80);
+    // MDNS.addService("http", "tcp", 80);
 
     digitalWrite(BUILTIN_LED_RED, HIGH);
 }
@@ -222,6 +222,10 @@ void loopTcp() {
         client.print("##########################################\n");
         client.print("# ESP environment sensor Prometheus feed #\n");
         client.print("##########################################\n");
+
+        client.print("\n# IP: ");
+        client.print(WiFi.localIP());
+        client.print("\n");
 
         int brightness = measureBrightness();
         client.print("\n# Analog brightness sensor\n");
