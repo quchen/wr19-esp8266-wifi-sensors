@@ -219,18 +219,17 @@ void loopTcp() {
     }
     Serial.println("New client");
     if(client.connected()) {
-        int brightness = measureBrightness();
-        tempHumMeasurement th = measureTempHum();
-        calibrateGas(th);
-        gasMeasurement gas = measureGas();
         client.print("##########################################\n");
         client.print("# ESP environment sensor Prometheus feed #\n");
         client.print("##########################################\n");
+
+        int brightness = measureBrightness();
         client.print("\n# Analog brightness sensor\n");
         client.print("brightness ");
         client.print(brightness);
         client.print(" # log au\n");
 
+        tempHumMeasurement th = measureTempHum();
         client.print("\n# Temperature/humidity sensor\n");
         client.print("temperature ");
         client.print(th.temperature);
@@ -239,6 +238,8 @@ void loopTcp() {
         client.print(th.humidity);
         client.print(" # %\n");
 
+        calibrateGas(th);
+        gasMeasurement gas = measureGas();
         client.print("\n# Gas sensor\n");
         client.print("eco2 ");
         client.print(gas.eCo2);
