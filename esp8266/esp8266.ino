@@ -26,6 +26,7 @@
 
 // Wifi
 #include <ESP8266WiFi.h>
+#include <ESP8266mDNS.h>
 const char* WifiSsid = "TNG";
 const char* WifiPass = "Internet!bei!TNG";
 WiFiServer server(80);
@@ -101,10 +102,10 @@ void setup() {
     Serial.print(gasSensor.serialnumber[2], HEX);
     Serial.println();
 
-    char* hostname = "esp8266";
+    const char* hostname = "esp8266";
 
     Serial.print("Setting up Wifi");
-    // WiFi.hostname(hostname);
+    WiFi.hostname(hostname);
     WiFi.mode(WIFI_STA);
     WiFi.begin(WifiSsid, WifiPass);
     while(WiFi.status() != WL_CONNECTED) {
@@ -119,6 +120,16 @@ void setup() {
 
     Serial.println("Starting server");
     server.begin();
+
+    if(!MDNS.begin(hostname)) {
+        Serial.println("Error setting up mDNS responder");
+        errorFlashBuiltinLed();
+    }
+    Serial.print("mDNS responder started: ");
+    Serial.print(hostname);
+    Serial.print(".local");
+    Serial.println();
+    MDNS.addService("http", "tcp", 80);
 
     digitalWrite(BUILTIN_LED_RED, HIGH);
 }
@@ -200,6 +211,7 @@ void loopCsv() {
 }
 
 void loopTcp() {
+    MDNS.update();
     WiFiClient client = server.available();
     if(!client) {
         delay(100);
