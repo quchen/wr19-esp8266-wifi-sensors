@@ -163,11 +163,18 @@ gasMeasurement measureGas() {
            , .tvoc = gasSensor.TVOC };
 }
 
+// Lol C. map from long to long won’t work for doubles.
+int mapDoubleInt(double x, double fromLo, double fromHi, int toLo, int toHi) {
+    double fromSpan = fromHi - fromLo;
+    int toSpan = toHi - toLo;
+    return (x - fromLo) * (double) toSpan / fromSpan + (double) toLo;
+}
+
 void setLedHsv(hsvColor hsv) {
     rgbColor rgb = hsv2rgb(hsv);
-    int r = map(rgb.r, 0, 1, 1023, 0);
-    int g = map(rgb.g, 0, 1, 1023, 0);
-    int b = map(rgb.b, 0, 1, 1023, 0);
+    int r = mapDoubleInt(rgb.r, 0.0, 1.0, 1023, 0);
+    int g = mapDoubleInt(rgb.g, 0.0, 1.0, 1023, 0);
+    int b = mapDoubleInt(rgb.b, 0.0, 1.0, 1023, 0);
 
     analogWrite(GPIO_LED_RED, r);
     analogWrite(GPIO_LED_GREEN, g);
