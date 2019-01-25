@@ -31,6 +31,9 @@ const char* WifiSsid = "TNG";
 const char* WifiPass = "Internet!bei!TNG";
 WiFiServer server(80);
 
+// sprintf target
+char stringBuffer128[128];
+
 typedef struct {
     float temperature; // °C
     float humidity;    // %
@@ -96,11 +99,12 @@ void setup() {
         Serial.println("Did not find SGP30 gas sensor!");
         errorFlashBuiltinLed();
     }
-    Serial.print("Found SGP30 sensor, serial number ");
-    Serial.print(gasSensor.serialnumber[0], HEX);
-    Serial.print(gasSensor.serialnumber[1], HEX);
-    Serial.print(gasSensor.serialnumber[2], HEX);
-    Serial.println();
+    sprintf(stringBuffer128,
+            "Found SGP30 sensor, serial number %x%x%x",
+            gasSensor.serialnumber[0],
+            gasSensor.serialnumber[1],
+            gasSensor.serialnumber[2]);
+    Serial.println(stringBuffer128);
 
     const char* hostname = "esp8266";
 
@@ -112,11 +116,8 @@ void setup() {
         delay(1000);
         Serial.print(".");
     }
-    Serial.print("connected to ");
-    Serial.print(WifiSsid);
-    Serial.print(", ");
-    Serial.print(WiFi.localIP());
-    Serial.println();
+    sprintf(stringBuffer128, "connected to %s", WiFi.localIP().toString().c_str());
+    Serial.println(stringBuffer128);
 
     Serial.println("Starting server");
     server.begin();
@@ -125,11 +126,9 @@ void setup() {
         Serial.println("Error setting up mDNS responder");
         errorFlashBuiltinLed();
     }
-    Serial.print("mDNS responder started: ");
-    Serial.print(hostname);
-    Serial.print(".local");
-    Serial.println();
     // MDNS.addService("http", "tcp", 80);
+    sprintf(stringBuffer128, "mDNS responder started: %s.local", hostname);
+    Serial.println(stringBuffer128);
 
     digitalWrite(BUILTIN_LED_RED, HIGH);
 }
