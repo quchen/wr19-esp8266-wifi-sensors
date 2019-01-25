@@ -29,6 +29,7 @@
 #include <ESP8266mDNS.h>
 const char* WifiSsid = "TNG";
 const char* WifiPass = "Internet!bei!TNG";
+const char* hostname = "esp8266-lupo";
 WiFiServer server(80);
 
 // sprintf target
@@ -106,8 +107,6 @@ void setup() {
             gasSensor.serialnumber[2]);
     Serial.println(stringBuffer128);
 
-    const char* hostname = "esp8266";
-
     Serial.print("Setting up Wifi");
     WiFi.hostname(hostname);
     WiFi.mode(WIFI_STA);
@@ -116,7 +115,7 @@ void setup() {
         delay(250);
         Serial.print(".");
     }
-    sprintf(stringBuffer128, "connected to %s", WiFi.localIP().toString().c_str());
+    sprintf(stringBuffer128, "connected as %s", WiFi.localIP().toString().c_str());
     Serial.println(stringBuffer128);
 
     Serial.println("Starting server");
@@ -229,9 +228,11 @@ void loopTcp() {
 
         client.print("\n");
 
-        sprintf(stringBuffer128, "# MAC: %s\n", WiFi.macAddress().c_str());
+        sprintf(stringBuffer128, "# MAC:  %s\n", WiFi.macAddress().c_str());
         client.print(stringBuffer128);
-        sprintf(stringBuffer128, "# IP:  %s\n", WiFi.localIP().toString().c_str());
+        sprintf(stringBuffer128, "# IP:   %s\n", WiFi.localIP().toString().c_str());
+        client.print(stringBuffer128);
+        sprintf(stringBuffer128, "# mDNS: %s.local\n", hostname);
         client.print(stringBuffer128);
 
         {
