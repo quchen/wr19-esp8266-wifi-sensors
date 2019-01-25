@@ -48,6 +48,44 @@ typedef struct {
 Adafruit_Si7021 tempHumSensor = Adafruit_Si7021();
 Adafruit_SGP30 gasSensor;
 
+
+
+void errorFlashBuiltinLed();
+void setupPinModes();
+void setupSerial();
+void errorFlashBuiltinLed();
+void setupTempHumSensor();
+void setupGasSensor();
+void setupWifi();
+void setupMdns();
+void setupServer();
+
+int measureBrightness();
+tempHumMeasurement measureTempHum();
+void calibrateGasTempHum(tempHumMeasurement);
+gasMeasurement measureGas();
+int mapDoubleInt(double, double, double, int, int);
+void setLedHsv(hsvColor);
+void loopCsv();
+void loopTcp();
+
+void setupPinModes() {
+    Serial.println("Setting pin modes");
+    pinMode(BUILTIN_LED_RED, OUTPUT);
+    pinMode(GPIO_LED_RED, OUTPUT);
+    pinMode(GPIO_LED_GREEN, OUTPUT);
+    pinMode(GPIO_LED_BLUE, OUTPUT);
+    digitalWrite(GPIO_LED_RED, HIGH);
+    digitalWrite(GPIO_LED_GREEN, HIGH);
+    digitalWrite(GPIO_LED_BLUE, HIGH);
+}
+
+void setupSerial() {
+    Serial.begin(115200);
+    while(!Serial) { delay(10); }
+    Serial.println("Serial communication set up");
+}
+
 void errorFlashBuiltinLed() {
     int state = HIGH;
     while (true) {
@@ -57,21 +95,7 @@ void errorFlashBuiltinLed() {
     }
 }
 
-void setup() {
-    Serial.begin(115200);
-    while(!Serial) { delay(10); }
-    Serial.println("Serial communication set up");
-
-    Serial.println("Setting pin modes");
-    pinMode(BUILTIN_LED_RED, OUTPUT);
-    digitalWrite(BUILTIN_LED_RED, LOW); // Builtin seems to be on on LOW
-    pinMode(GPIO_LED_RED, OUTPUT);
-    pinMode(GPIO_LED_GREEN, OUTPUT);
-    pinMode(GPIO_LED_BLUE, OUTPUT);
-    digitalWrite(GPIO_LED_RED, HIGH);
-    digitalWrite(GPIO_LED_GREEN, HIGH);
-    digitalWrite(GPIO_LED_BLUE, HIGH);
-
+void setupTempHumSensor() {
     if (!tempHumSensor.begin()) {
         Serial.println("Did not find Si7021 sensor!");
         errorFlashBuiltinLed();
@@ -95,7 +119,9 @@ void setup() {
             Serial.print("Unknown");
     }
     Serial.println();
+}
 
+void setupGasSensor() {
     if (!gasSensor.begin()){
         Serial.println("Did not find SGP30 gas sensor!");
         errorFlashBuiltinLed();
@@ -106,7 +132,9 @@ void setup() {
             gasSensor.serialnumber[1],
             gasSensor.serialnumber[2]);
     Serial.println(stringBuffer128);
+}
 
+void setupWifi() {
     Serial.print("Setting up Wifi");
     WiFi.hostname(hostname);
     WiFi.mode(WIFI_STA);
@@ -117,10 +145,9 @@ void setup() {
     }
     sprintf(stringBuffer128, "connected as %s", WiFi.localIP().toString().c_str());
     Serial.println(stringBuffer128);
+}
 
-    Serial.println("Starting server");
-    server.begin();
-
+void setupMdns() {
     if(!MDNS.begin(hostname)) {
         Serial.println("Error setting up mDNS responder");
         errorFlashBuiltinLed();
@@ -128,7 +155,22 @@ void setup() {
     sprintf(stringBuffer128, "mDNS responder started: %s.local", hostname);
     Serial.println(stringBuffer128);
     MDNS.addService("esp", "tcp", 80);
+}
 
+void setupServer() {
+    Serial.println("Starting server");
+    server.begin();
+}
+
+void setup() {
+    setupPinModes();
+    digitalWrite(BUILTIN_LED_RED, LOW); // Builtin is on on LOW
+    setupSerial();
+    setupTempHumSensor();
+    setupGasSensor();
+    setupWifi();
+    setupMdns();
+    setupServer();
     digitalWrite(BUILTIN_LED_RED, HIGH);
 }
 
