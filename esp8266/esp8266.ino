@@ -35,12 +35,12 @@ char stringBuffer128[128];
 typedef struct {
     float temperature; // °C
     float humidity;    // %
-} tempHumMeasurement;
+} TempHumMeasurement;
 
 typedef struct {
     uint16_t eco2; // CO₂ equivalent, ppb
     uint16_t tvoc; // Total volatile organic compounds, ppb
-} gasMeasurement;
+} GasMeasurement;
 
 Adafruit_Si7021 tempHumSensor;
 Adafruit_SGP30 gasSensor;
@@ -61,9 +61,9 @@ void setupMdns();
 void setupServer();
 
 int measureBrightness();
-tempHumMeasurement measureTempHum();
-void calibrateGasTempHum(tempHumMeasurement);
-gasMeasurement measureGas();
+TempHumMeasurement measureTempHum();
+void calibrateGasTempHum(TempHumMeasurement);
+GasMeasurement measureGas();
 int mapDoubleInt(double, double, double, int, int);
 void setLedHsv(hsvColor);
 void loopCsv();
@@ -127,7 +127,7 @@ void setupTempHumSensor() {
             break;
         case SI_UNKNOWN:
         default:
-            Serial.print("Unknown");
+            Serial.print("UnknowMsn");
     }
     Serial.println();
 }
@@ -195,19 +195,19 @@ int measureBrightness() {
     return analogRead(GPIO_SENSOR_LOG_LIGHT);
 }
 
-tempHumMeasurement measureTempHum() {
+TempHumMeasurement measureTempHum() {
     return { .temperature = tempHumSensor.readHumidity()
            , .humidity = tempHumSensor.readTemperature() };
 }
 
-void calibrateGasTempHum(tempHumMeasurement tempHum) {
+void calibrateGasTempHum(TempHumMeasurement tempHum) {
     // approximation formula from Sensirion SGP30 Driver Integration chapter 3.15
     const float absoluteHumidity = 216.7f * ((tempHum.humidity / 100.0f) * 6.112f * exp((17.62f * tempHum.temperature) / (243.12f + tempHum.temperature)) / (273.15f + tempHum.temperature)); // [g/m^3]
     const uint32_t absoluteHumidityScaled = static_cast<uint32_t>(1000.0f * absoluteHumidity); // [mg/m^3]
     gasSensor.setHumidity(absoluteHumidityScaled);
 }
 
-gasMeasurement measureGas() {
+GasMeasurement measureGas() {
     if(!gasSensor.IAQmeasure()) {
         Serial.println("# Gas measurement failed");
     }
@@ -238,9 +238,9 @@ void setLedHsv(hsvColor hsv) {
 
 void loopCsv() {
     int brightness = measureBrightness();
-    tempHumMeasurement th = measureTempHum();
+    TempHumMeasurement th = measureTempHum();
     calibrateGasTempHum(th);
-    gasMeasurement gas = measureGas();
+    GasMeasurement gas = measureGas();
 
     Serial.print(brightness);
     Serial.print(th.humidity, 2);
@@ -256,9 +256,15 @@ double saturation = 1;
 double lightness = 1;
 void updateLed() { setLedHsv({hue, saturation, lightness}); }
 
-// Only occasionally measure/do calibration work
-unsigned long lastGasHumidityAdjustment = 0;
-unsigned long lastGasCalibration = 0;
+// Measurement timing/caches/gauges
+unsigned long nowMs;
+int brightnessMeasurement;
+TempHumMeasurement tempHumMeasurement;
+GasMeasurement gasMeasurement;
+const unsigned long gasHumidityGaugeIntervalMs = 5*1000;
+const unsigned long gasBaselineCalibrationReadoutIntervalMs = 1*60*1000;
+unsigned long lastGasHumidityAdjustmentMs = 0;
+unsigned long lastGasBaselineCalibrationMs = 0;
 uint16_t eco2Base = 0xff;
 uint16_t tvocBase = 0xff;
 
@@ -279,74 +285,97 @@ void loopTcp() {
     lightness = 0.5;
     hue = random(0, 360);
     updateLed();
+
+    nowMs = millis();
+    brightnessMeasurement = measureBrightness();
+    tempHumMeasurement = measureTempHum();
+    unsigned long lastGasHumidityCalibrationAgoMs = nowMs - lastGasHumidityAdjustmentMs;
+    if(lastGasHumidityCalibrationAgoMs > gasHumidityGaugeIntervalMs) {
+        lastGasHumidityAdjustmentMs = nowMs;
+        calibrateGasTempHum(tempHumMeasurement);
+    }
+    unsigned long lastGasBaselineCalibrationAgoMs = nowMs - lastGasBaselineCalibrationMs;
+    if(lastGasBaselineCalibrationAgoMs > gasBaselineCalibrationReadoutIntervalMs) {
+        lastGasBaselineCalibrationMs = nowMs;
+        if (!gasSensor.getIAQBaseline(&eco2Base, &tvocBase)) {
+            Serial.println("Failed to get baseline readings");
+            errorFlashBuiltinLed();
+        }
+    }
+    // gasSensor.setIAQBaseline(0x8E68, 0x8F41);
+    gasMeasurement = measureGas();
+
     Serial.print("[New client");
     if(client.connected()) {
 
-        client.print("HTTP/1.1 200 OK\r\n");
-        client.print("Content-Type: text/plain\r\n");
-        client.print("\r\n");
+        {
+            client.print("HTTP/1.1 200 OK\r\n");
+            client.print("Content-Type: text/plain\r\n");
+            client.print("\r\n");
 
-        client.print("##########################################\n");
-        client.print("# ESP environment sensor Prometheus feed #\n");
-        client.print("##########################################\n");
+            client.print("##########################################\n");
+            client.print("# ESP environment sensor Prometheus feed #\n");
+            client.print("##########################################\n");
 
-        client.print("\n");
-
-        sprintf(stringBuffer128, "# MAC:  %s\n", WiFi.macAddress().c_str());
-        client.print(stringBuffer128);
-        sprintf(stringBuffer128, "# IP:   %s\n", WiFi.localIP().toString().c_str());
-        client.print(stringBuffer128);
-        sprintf(stringBuffer128, "# mDNS: %s.local\n", hostname);
-        client.print(stringBuffer128);
+            client.print("\n");
+        }
 
         {
-            int brightness = measureBrightness();
+            sprintf(stringBuffer128, "# MAC:  %s\n", WiFi.macAddress().c_str());
+            client.print(stringBuffer128);
+            sprintf(stringBuffer128, "# IP:   %s\n", WiFi.localIP().toString().c_str());
+            client.print(stringBuffer128);
+            sprintf(stringBuffer128, "# mDNS: %s.local\n", hostname);
+            client.print(stringBuffer128);
+        }
+
+        {
             client.print("\n# Analog brightness sensor\n");
-            sprintf(stringBuffer128, "brightness %d\n", brightness);
+            sprintf(stringBuffer128, "brightness %d\n", brightnessMeasurement);
             client.print(stringBuffer128);
         }
 
-        tempHumMeasurement th;
         {
-            th = measureTempHum();
             client.print("\n# Temperature/humidity sensor\n");
-            sprintf(stringBuffer128, "temperature %.2f\n", th.temperature);
+            sprintf(stringBuffer128, "temperature %.2f\n", tempHumMeasurement.temperature);
             client.print(stringBuffer128);
-            sprintf(stringBuffer128, "humidity    %.2f\n", th.humidity);
+            sprintf(stringBuffer128, "humidity    %.2f\n", tempHumMeasurement.humidity);
             client.print(stringBuffer128);
         }
 
-        unsigned long now = millis();
         {
-            {
-                unsigned long gaugeInterval = 60*1000;
-                if(now - lastGasHumidityAdjustment > gaugeInterval) {
-                    lastGasHumidityAdjustment = now;
-                    calibrateGasTempHum(th);
-                }
-            }
-            gasMeasurement gas = measureGas();
             client.print("\n# Gas sensor\n");
-            sprintf(stringBuffer128, "eco2 %d\n", gas.eco2);
+            sprintf(stringBuffer128, "eco2 %d\n", gasMeasurement.eco2);
             client.print(stringBuffer128);
-            sprintf(stringBuffer128, "tvoc %d\n", gas.tvoc);
+            sprintf(stringBuffer128, "tvoc %d\n", gasMeasurement.tvoc);
             client.print(stringBuffer128);
         }
 
         {
-            unsigned long calibrationReadoutInterval = 60*1000;
-            if(now - lastGasCalibration > calibrationReadoutInterval) {
-                lastGasCalibration = now;
-                if (!gasSensor.getIAQBaseline(&eco2Base, &tvocBase)) {
-                    Serial.println("Failed to get baseline readings");
-                    errorFlashBuiltinLed();
-                }
-            }
-            client.print("# Calibration values\n");
-            sprintf(stringBuffer128, "# <sensor>.setIAQBaseline(0x%x, 0x%x);\n", eco2Base, tvocBase);
+            client.print("#    Gas calibration values\n");
+            sprintf(stringBuffer128, "#    <sensor>.setIAQBaseline(0x%x, 0x%x);\n", eco2Base, tvocBase);
             client.print(stringBuffer128);
+            sprintf(stringBuffer128,
+                "#    Last absolute humidity calibration: %.2f s ago (runs every %.2f s)\n",
+                (double) lastGasHumidityCalibrationAgoMs / 1000,
+                (double) gasHumidityGaugeIntervalMs / 1000
+                );
+            client.print(stringBuffer128);
+            sprintf(stringBuffer128,
+                "#    Last baseline calibration output: %.2f s ago (runs every %.2f s)\n",
+                (double) lastGasBaselineCalibrationAgoMs / 1000,
+                (double) gasBaselineCalibrationReadoutIntervalMs / 1000
+                );
+            client.print(stringBuffer128);
+
+            sprintf(stringBuffer128,
+                "gasHumidityCalibration %.3f\ngasBaselineCalibration %.3f\n",
+                (double) lastGasHumidityCalibrationAgoMs/gasHumidityGaugeIntervalMs,
+                (double) lastGasBaselineCalibrationAgoMs/gasBaselineCalibrationReadoutIntervalMs
+                );
+            client.print(stringBuffer128);
+
         }
-        // gasSensor.setIAQBaseline(0x8E68, 0x8F41);
 
         Serial.println(", done]");
     }
