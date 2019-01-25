@@ -45,7 +45,7 @@ typedef struct {
     uint16_t tvoc; // Total volatile organic compounds, ppb
 } gasMeasurement;
 
-Adafruit_Si7021 tempHumSensor = Adafruit_Si7021();
+Adafruit_Si7021 tempHumSensor;
 Adafruit_SGP30 gasSensor;
 
 
@@ -57,6 +57,7 @@ void errorFlashBuiltinLed();
 void setupTempHumSensor();
 void setupGasSensor();
 void setupWifi();
+void connectWifi();
 void setupMdns();
 void setupServer();
 
@@ -91,13 +92,14 @@ void errorFlashBuiltinLed() {
     while (true) {
         state = state == HIGH ? LOW : HIGH;
         digitalWrite(BUILTIN_LED_RED, state);
-        delay(500);
+        delay(250);
     }
 }
 
 void setupTempHumSensor() {
+    tempHumSensor = Adafruit_Si7021();
     if (!tempHumSensor.begin()) {
-        Serial.println("Did not find Si7021 sensor!");
+        Serial.println("Did not find temperature/humidity sensor!");
         errorFlashBuiltinLed();
     }
     Serial.print("Identifying temperature/humidity sensor ");
@@ -138,8 +140,12 @@ void setupWifi() {
     Serial.print("Setting up Wifi");
     WiFi.hostname(hostname);
     WiFi.mode(WIFI_STA);
+    connectWifi();
+}
+
+void connectWifi() {
     WiFi.begin(WifiSsid, WifiPass);
-    while(WiFi.status() != WL_CONNECTED) {
+    while(!WiFi.isConnected()) {
         delay(250);
         Serial.print(".");
     }
@@ -246,6 +252,11 @@ uint16_t eco2Base = 0xff;
 uint16_t tvocBase = 0xff;
 
 void loopTcp() {
+    if(!WiFi.isConnected()) {
+        Serial.println("Wifi unavailable/connection lost");
+        connectWifi();
+        return;
+    }
     MDNS.update();
     WiFiClient client = server.available();
     if(!client) {
