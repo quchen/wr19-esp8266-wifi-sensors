@@ -40,7 +40,7 @@ typedef struct {
 } tempHumMeasurement;
 
 typedef struct {
-    uint16_t eCo2; // CO₂ equivalent, ppb
+    uint16_t eco2; // CO₂ equivalent, ppb
     uint16_t tvoc; // Total volatile organic compounds, ppb
 } gasMeasurement;
 
@@ -113,7 +113,7 @@ void setup() {
     WiFi.mode(WIFI_STA);
     WiFi.begin(WifiSsid, WifiPass);
     while(WiFi.status() != WL_CONNECTED) {
-        delay(1000);
+        delay(250);
         Serial.print(".");
     }
     sprintf(stringBuffer128, "connected to %s", WiFi.localIP().toString().c_str());
@@ -126,9 +126,9 @@ void setup() {
         Serial.println("Error setting up mDNS responder");
         errorFlashBuiltinLed();
     }
-    // MDNS.addService("http", "tcp", 80);
     sprintf(stringBuffer128, "mDNS responder started: %s.local", hostname);
     Serial.println(stringBuffer128);
+    MDNS.addService("esp", "tcp", 80);
 
     digitalWrite(BUILTIN_LED_RED, HIGH);
 }
@@ -158,7 +158,7 @@ gasMeasurement measureGas() {
         Serial.println("# Gas measurement failed");
     }
 
-    return { .eCo2 = gasSensor.eCO2
+    return { .eco2 = gasSensor.eCO2
            , .tvoc = gasSensor.TVOC };
 }
 
@@ -171,6 +171,7 @@ int mapDoubleInt(double x, double fromLo, double fromHi, int toLo, int toHi) {
 
 void setLedHsv(hsvColor hsv) {
     rgbColor rgb = hsv2rgb(hsv);
+
     int r = mapDoubleInt(rgb.r, 0.0, 1.0, 1023, 0);
     int g = mapDoubleInt(rgb.g, 0.0, 1.0, 1023, 0);
     int b = mapDoubleInt(rgb.b, 0.0, 1.0, 1023, 0);
