@@ -1,3 +1,6 @@
+#define LED_ON 1
+#define LED_OFF 0
+
 // Builtin LEDs
 #define BUILTIN_LED_RED 0
 #define BUILTIN_LED_BLUE 2
@@ -6,12 +9,6 @@
 #define GPIO_LED_GREEN 12
 #define GPIO_LED_BLUE 13
 #define GPIO_LED_RED 14
-
-// I²C configuration
-#define GPIO_I2C_SDA 4
-#define GPIO_I2C_SCL 5
-#define I2C_ADDR_TEMP_HUM 0x40
-#define I2C_ADDR_GAS
 
 // Light sensor
 #define GPIO_SENSOR_LOG_LIGHT A0
@@ -29,7 +26,7 @@
 #include <ESP8266mDNS.h>
 const char* WifiSsid = "TNG";
 const char* WifiPass = "Internet!bei!TNG";
-const char* hostname = "esp8266-lupo";
+const char* hostname = "lupo-esp";
 WiFiServer server(80);
 
 // sprintf target
@@ -51,6 +48,8 @@ Adafruit_SGP30 gasSensor;
 
 
 void errorFlashBuiltinLed();
+void builtinLedRed(bool);
+
 void setupPinModes();
 void setupSerial();
 void errorFlashBuiltinLed();
@@ -69,6 +68,14 @@ int mapDoubleInt(double, double, double, int, int);
 void setLedHsv(hsvColor);
 void loopCsv();
 void loopTcp();
+
+void builtinLedRed(bool state) {
+    digitalWrite(BUILTIN_LED_RED, state == LED_ON ? LOW : HIGH);
+}
+
+void builtinLedBlue(bool state) {
+    digitalWrite(BUILTIN_LED_BLUE, state == LED_ON ? LOW : HIGH);
+}
 
 void setupPinModes() {
     Serial.println("Setting pin modes");
@@ -89,10 +96,11 @@ void setupSerial() {
 }
 
 void errorFlashBuiltinLed() {
-    int state = HIGH;
+    int state; // No need to initialize, first read will be rubbish though.
+               // Hooray unsafe C in production! :-D
     while (true) {
-        state = state == HIGH ? LOW : HIGH;
-        digitalWrite(BUILTIN_LED_RED, state);
+        state = state == LED_ON ? LED_OFF : LED_ON;
+        builtinLedRed(state);
         delay(250);
     }
 }
@@ -138,13 +146,14 @@ void setupGasSensor() {
 }
 
 void setupWifi() {
-    Serial.print("Setting up Wifi");
+    Serial.print("Setting up Wifi...");
     WiFi.hostname(hostname);
     WiFi.mode(WIFI_STA);
     connectWifi();
 }
 
 void connectWifi() {
+    builtinLedBlue(LED_ON);
     WiFi.begin(WifiSsid, WifiPass);
     while(!WiFi.isConnected()) {
         delay(250);
@@ -152,6 +161,7 @@ void connectWifi() {
     }
     sprintf(stringBuffer128, "connected as %s", WiFi.localIP().toString().c_str());
     Serial.println(stringBuffer128);
+    builtinLedBlue(LED_OFF);
 }
 
 void setupMdns() {
@@ -171,14 +181,14 @@ void setupServer() {
 
 void setup() {
     setupPinModes();
-    digitalWrite(BUILTIN_LED_RED, LOW); // Builtin is on on LOW
+    builtinLedRed(LED_ON);
     setupSerial();
     setupTempHumSensor();
     setupGasSensor();
     setupWifi();
     setupMdns();
     setupServer();
-    digitalWrite(BUILTIN_LED_RED, HIGH);
+    builtinLedRed(LED_OFF);
 }
 
 int measureBrightness() {
