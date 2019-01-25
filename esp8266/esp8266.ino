@@ -184,36 +184,15 @@ void setLedHsv(hsvColor hsv) {
 
 void loopCsv() {
     int brightness = measureBrightness();
-    Serial.print("Bright");
-    Serial.print(", ");
-    Serial.print(brightness);
-    Serial.print(", ");
-    // hsvColor hsv =
-    //     { .h = map(brightness, 0, 1023, 0, 360)
-    //     , .s = 1
-    //     , .v = 1 };
-    // setLedHsv(hsv);
-
     tempHumMeasurement th = measureTempHum();
-    Serial.print("H%");
-    Serial.print(", ");
-    Serial.print(th.humidity, 2);
-    Serial.print(", ");
-    Serial.print("T");
-    Serial.print(", ");
-    Serial.print(th.temperature, 2);
-
-    calibrateGas(th);
+    calibrateGasTempHum(th);
     gasMeasurement gas = measureGas();
-    Serial.print(", ");
-    Serial.print("eCO2, ");
-    Serial.print(", ");
-    Serial.print(gas.eCo2);
-    Serial.print(", ");
-    Serial.print("TVOC");
-    Serial.print(", ");
-    Serial.print(gas.tvoc);
 
+    Serial.print(brightness);
+    Serial.print(th.humidity, 2);
+    Serial.print(th.temperature, 2);
+    Serial.print(gas.eco2);
+    Serial.print(gas.tvoc);
     Serial.println();
 }
 
