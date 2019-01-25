@@ -84,6 +84,7 @@ void setupPinModes() {
 void setupSerial() {
     Serial.begin(115200);
     while(!Serial) { delay(10); }
+    Serial.println(); // Separate from the initial rubbish sent at low baud rate
     Serial.println("Serial communication set up");
 }
 
