@@ -27,7 +27,8 @@
 const char* WifiSsid = "TNG";
 const char* WifiPass = "Internet!bei!TNG";
 const char* hostname = "lupo-esp";
-WiFiServer server(80);
+#define SERVER_PORT 80
+WiFiServer server(SERVER_PORT);
 
 // sprintf target
 char stringBuffer128[128];
@@ -96,12 +97,11 @@ void setupSerial() {
 }
 
 void errorFlashBuiltinLed() {
-    int state; // No need to initialize, first read will be rubbish though.
-               // Hooray unsafe C in production! :-D
+    int state = LED_ON;
     while (true) {
+        delay(250);
         state = state == LED_ON ? LED_OFF : LED_ON;
         builtinLedRed(state);
-        delay(250);
     }
 }
 
@@ -175,7 +175,8 @@ void setupMdns() {
 }
 
 void setupServer() {
-    Serial.println("Starting server");
+    sprintf(stringBuffer128, "Starting server on port %d\n", SERVER_PORT);
+    Serial.print(stringBuffer128);
     server.begin();
 }
 
@@ -268,13 +269,20 @@ unsigned long lastGasBaselineCalibrationMs = 0;
 uint16_t eco2Base = 0xff;
 uint16_t tvocBase = 0xff;
 
+unsigned long lastMdnsUpdateMs = 0;
+unsigned long mdnsUpdateIntervalMs = 1*60*1000;
+
 void loopTcp() {
     if(!WiFi.isConnected()) {
         Serial.println("Wifi unavailable/connection lost");
         connectWifi();
         return;
     }
-    MDNS.update();
+    nowMs = millis();
+    if(nowMs > lastMdnsUpdateMs + mdnsUpdateIntervalMs) {
+        lastMdnsUpdateMs = nowMs;
+        MDNS.update();
+    }
     WiFiClient client = server.available();
     if(!client) {
         lightness = lightness > 0 ? lightness - 0.01 : 0;
@@ -286,7 +294,6 @@ void loopTcp() {
     hue = random(0, 360);
     updateLed();
 
-    nowMs = millis();
     brightnessMeasurement = measureBrightness();
     tempHumMeasurement = measureTempHum();
     unsigned long lastGasHumidityCalibrationAgoMs = nowMs - lastGasHumidityAdjustmentMs;
