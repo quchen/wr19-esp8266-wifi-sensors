@@ -291,7 +291,7 @@ void loopTcp() {
         return;
     }
     lightness = 0.5;
-    hue = random(0, 360);
+    hue = fmod(hue + 137.5, 360); // golden angle ensures lots of different colors
     updateLed();
 
     brightnessMeasurement = measureBrightness();
