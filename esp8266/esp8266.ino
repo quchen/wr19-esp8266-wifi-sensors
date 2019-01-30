@@ -252,9 +252,9 @@ void loopCsv() {
 }
 
 // LED state
-double hue = 200;
+double hue = 0;
 double saturation = 1;
-double lightness = 1;
+double lightness = 0;
 void updateLed() { setLedHsv({hue, saturation, lightness}); }
 
 // Measurement timing/caches/gauges
@@ -262,17 +262,20 @@ unsigned long nowMs;
 int brightnessMeasurement;
 TempHumMeasurement tempHumMeasurement;
 GasMeasurement gasMeasurement;
+
 const unsigned long gasHumidityGaugeIntervalMs = 5*1000;
-const unsigned long gasBaselineCalibrationReadoutIntervalMs = 1*60*1000;
 unsigned long lastGasHumidityAdjustmentMs = 0;
+
+const unsigned long gasBaselineCalibrationReadoutIntervalMs = 1*60*1000;
 unsigned long lastGasBaselineCalibrationMs = 0;
+// Will be modified by the baseline calibration function
 uint16_t eco2Base = 0xff;
 uint16_t tvocBase = 0xff;
 
+const unsigned long mdnsUpdateIntervalMs = 1*60*1000;
 unsigned long lastMdnsUpdateMs = 0;
-unsigned long mdnsUpdateIntervalMs = 1*60*1000;
 
-void loopTcp() {
+void loop() {
     if(!WiFi.isConnected()) {
         Serial.println("Wifi unavailable/connection lost");
         connectWifi();
@@ -285,7 +288,7 @@ void loopTcp() {
     }
     WiFiClient client = server.available();
     if(!client) {
-        lightness = lightness > 0 ? lightness - 0.01 : 0;
+        lightness = constrain(lightness - 0.01, 0, 1);
         updateLed();
         delay(5);
         return;
@@ -386,8 +389,4 @@ void loopTcp() {
 
         Serial.println(", done]");
     }
-}
-
-void loop() {
-    loopTcp();
 }
