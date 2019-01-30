@@ -293,7 +293,7 @@ void loop() {
         delay(5);
         return;
     }
-    lightness = 0.5;
+    lightness = 1;
     hue = fmod(hue + 137.5, 360); // golden angle ensures lots of different colors
     updateLed();
 
