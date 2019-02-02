@@ -231,9 +231,9 @@ int mapDoubleInt(double x, double fromLo, double fromHi, int toLo, int toHi) {
 void setLedHsv(hsvColor hsv) {
     rgbColor rgb = hsv2rgb(hsv);
 
-    int r = mapDoubleInt(rgb.r, 0.0, 1.0, 1023, 0);
-    int g = mapDoubleInt(rgb.g, 0.0, 1.0, 1023, 0);
-    int b = mapDoubleInt(rgb.b, 0.0, 1.0, 1023, 0);
+    int r = mapDoubleInt(rgb.r, 0.0, 1.0, 0, 1023);
+    int g = mapDoubleInt(rgb.g, 0.0, 1.0, 0, 1023);
+    int b = mapDoubleInt(rgb.b, 0.0, 1.0, 0, 1023);
 
     analogWrite(GPIO_LED_RED, r);
     analogWrite(GPIO_LED_GREEN, g);
