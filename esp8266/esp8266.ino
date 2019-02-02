@@ -144,6 +144,12 @@ void setupGasSensor() {
             gasSensor.serialnumber[1],
             gasSensor.serialnumber[2]);
     Serial.println(stringBuffer128);
+
+    uint16_t eco2Base = 0x8e4c;
+    uint16_t tvocBase = 0x8e49;
+    gasSensor.setIAQBaseline(eco2Base, tvocBase);
+    sprintf(stringBuffer128, "Baseline values set! eCO2: %x, TVOC: %x", eco2Base, tvocBase);
+    Serial.println(stringBuffer128);
 }
 
 void setupWifi() {
@@ -316,7 +322,6 @@ void loop() {
             errorFlashBuiltinLed();
         }
     }
-    // gasSensor.setIAQBaseline(0x8E68, 0x8F41);
     gasMeasurement = measureGas();
 
     Serial.print("[New client");
