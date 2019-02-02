@@ -154,6 +154,7 @@ void setupGasSensor() {
 
 void setupWifi() {
     Serial.print("Setting up Wifi...");
+    Serial.println();
     WiFi.hostname(hostname);
     WiFi.mode(WIFI_STA);
     connectWifi();
@@ -244,7 +245,6 @@ void setLedHsv(hsvColor hsv) {
     analogWrite(GPIO_LED_RED, r);
     analogWrite(GPIO_LED_GREEN, g);
     analogWrite(GPIO_LED_BLUE, b);
-
 }
 
 void loopCsv() {
