@@ -155,9 +155,12 @@ void setupWifi() {
 void connectWifi() {
     builtinLedBlue(LED_ON);
     WiFi.begin(WifiSsid, WifiPass);
+    int dotsWritten = 0;
     while(!WiFi.isConnected()) {
         delay(250);
         Serial.print(".");
+        ++dotsWritten;
+        if(dotsWritten % 80 == 0) { Serial.println(); }
     }
     sprintf(stringBuffer128, "connected as %s", WiFi.localIP().toString().c_str());
     Serial.println(stringBuffer128);
