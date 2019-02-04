@@ -24,8 +24,8 @@
 // Wifi
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
-const char* WifiSsid = "TNG";
-const char* WifiPass = "Internet!bei!TNG";
+const char* WifiSsid = "xxx";
+const char* WifiPass = "xxx";
 const char* hostname = "lupo-esp";
 #define SERVER_PORT 80
 WiFiServer server(SERVER_PORT);
